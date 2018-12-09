@@ -1,16 +1,19 @@
 package linkstaterouting;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 
 public class LinkStatePacket
 {
-	private int								id				= 0;
-	private int								sourceId		= 0;
-	private LinkedList<LinkStateRouterInfo>	connectedLinks	= new LinkedList<>();
-	private Graph							networkGraph	= null;
+	private int								id					= 0;
+	private int								sourceId			= 0;
+	private LinkedList<LinkStateRouterInfo>	connectedLinks		= new LinkedList<>();
+	private List<Integer>					disconnectedRouters	= new ArrayList<>();
+	private Graph							networkGraph		= null;
 
-	private int								sequenceNumber	= 0;
-	private int								timeToLive		= 10;
+	private int								sequenceNumber		= 0;
+	private int								timeToLive			= 1;
 
 	public int getId()
 	{
@@ -54,7 +57,7 @@ public class LinkStatePacket
 
 	public void resetTTL()
 	{
-		timeToLive = 10;
+		timeToLive = 1;
 	}
 
 	public void addConnectedLink(LinkStateRouterInfo linkStateRouterInfo)
@@ -76,7 +79,7 @@ public class LinkStatePacket
 	{
 		this.sourceId = sourceIp;
 	}
-	
+
 	public Graph getNetworkGraph()
 	{
 		return networkGraph;
@@ -87,4 +90,13 @@ public class LinkStatePacket
 		this.networkGraph = networkGraph;
 	}
 
+	public List<Integer> getDisconnectedRouters()
+	{
+		return disconnectedRouters;
+	}
+
+	public void addDisconnectedRouter(int id)
+	{
+		disconnectedRouters.add(id);
+	}
 }

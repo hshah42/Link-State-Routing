@@ -4,7 +4,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Set;
 
 public class LinkStateRouting
@@ -107,17 +111,31 @@ public class LinkStateRouting
 
 			if (input.equals("c"))
 			{
-				for (int id : keys)
+				Entry<Integer, Router> entry = routers.entrySet().iterator().next();
+				Router router = entry.getValue();
+
+				Set<Integer> routerOriginated = new HashSet<>();
+
+				Queue<Integer> queue = new LinkedList<>();
+
+				while (routerOriginated.size() != routers.size())
 				{
-					Router router = routers.get(id);
 					router.originatePacket();
+
+					for (int routerId : router.getNeighbours())
+					{
+						queue.add(routerId);
+					}
+
+					routerOriginated.add(router.getId());
+					router = routers.get(queue.remove());
 				}
-				
-				for (int id : keys)
+
+				for (int routerId : keys)
 				{
-					Router router = routers.get(id);
-					//router.computeShortestPath();
+					routers.get(routerId).computeShortestPath();
 				}
+
 			}
 			else if (input.startsWith("s"))
 			{
@@ -145,7 +163,6 @@ public class LinkStateRouting
 					router.setRouters(routers);
 					routers.put(id, router);
 				}
-				
 
 			}
 			else if (input.equals("q"))

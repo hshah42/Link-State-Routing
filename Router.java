@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 public class Router
@@ -14,6 +15,7 @@ public class Router
 	private Map<Integer, Integer>		sequenceNumberMap		= new HashMap<>();
 	private Map<Integer, List<Integer>>	tickCount				= new HashMap<>();
 	private Map<Integer, Router>		routers					= new HashMap<>();
+	private Map<Integer, Integer>		routingCost				= new HashMap<>();
 
 	private Graph						networkGraph			= null;
 	private String						networkName				= null;
@@ -85,6 +87,11 @@ public class Router
 		this.networkSize = networkSize;
 	}
 
+	public Set<Integer> getNeighbours()
+	{
+		return connectedNetworks.keySet();
+	}
+
 	public void addNetwork(int id, int cost)
 	{
 		connectedNetworks.put(id, cost);
@@ -99,20 +106,19 @@ public class Router
 	public void printRoutingTable()
 	{
 		Map<Integer, RoutingTableInfo> routingTable = shortestPathAlgorithm.getRoutingTable();
-		Set<Integer> keys = routingTable.keySet();
 
-		for (int key : keys)
+		for (Entry<Integer, Integer> entry : routingCost.entrySet())
 		{
-			if (key == id)
+			if (entry.getKey() == id)
 			{
 				continue;
 			}
 
-			RoutingTableInfo routingTableInfo = routingTable.get(key);
+			RoutingTableInfo routingTableInfo = routingTable.get(entry.getKey());
 
 			if (routingTableInfo.getPath().size() > 0)
 			{
-				int cost = routingTableInfo.getCost();
+				int cost = entry.getValue();
 				String costString = "";
 
 				if (cost >= 0)
@@ -124,8 +130,8 @@ public class Router
 					costString = "Router Down";
 				}
 
-				System.out.println(
-						routingTableInfo.getNetwork() + " " + routingTableInfo.getPath().get(1) + " " + costString);
+				System.out.println(routingTableInfo.getNetwork() + " "
+						+ routers.get(routingTableInfo.getPath().get(1)).networkName + " " + costString);
 			}
 
 		}
@@ -143,6 +149,10 @@ public class Router
 			Router router = routers.get(neighbourId);
 			LinkStateRouterInfo linkStateRouterInfo = new LinkStateRouterInfo(neighbourId,
 					connectedNetworks.get(neighbourId), router.getNetworkName());
+
+			linkStateRouterInfo.addToPath(id);
+			linkStateRouterInfo.addToPath(neighbourId);
+
 			list.add(linkStateRouterInfo);
 		}
 
@@ -161,6 +171,10 @@ public class Router
 			Router router = routers.get(neighbourId);
 			LinkStateRouterInfo linkStateRouterInfo = new LinkStateRouterInfo(neighbourId,
 					connectedNetworks.get(neighbourId), router.getNetworkName());
+
+			linkStateRouterInfo.addToPath(id);
+			linkStateRouterInfo.addToPath(neighbourId);
+
 			list.add(linkStateRouterInfo);
 		}
 
@@ -170,6 +184,13 @@ public class Router
 	public void computeShortestPath()
 	{
 		shortestPathAlgorithm.computeShortestPath(networkGraph);
+
+		Map<Integer, RoutingTableInfo> routingTableInfo = shortestPathAlgorithm.getRoutingTable();
+
+		for (Entry<Integer, RoutingTableInfo> entry : routingTableInfo.entrySet())
+		{
+			routingCost.put(entry.getKey(), entry.getValue().getCost());
+		}
 	}
 
 	public boolean receivePacket(LinkStatePacket linkStatePacket)
@@ -189,7 +210,13 @@ public class Router
 				networkGraph.insertAt(linkStatePacket.getId(), linkStatePacket.getConnectedLinks());
 				sequenceNumberMap.put(linkStatePacket.getId(), linkStatePacket.getSequenceNumber());
 
-				shortestPathAlgorithm.computeShortestPath(networkGraph);
+				computeShortestPath();
+
+				for (int routerId : linkStatePacket.getDisconnectedRouters())
+				{
+					routingCost.put(routerId, -1);
+				}
+
 				int sourceId = linkStatePacket.getSourceId();
 
 				linkStatePacket.setSourceId(id);
@@ -236,8 +263,6 @@ public class Router
 
 		for (int neighbourRouterId : keyset)
 		{
-			String network = null;
-
 			tickCount.put(sequenceNumber, new ArrayList<>());
 			int currentTickCount = 0;
 
@@ -262,15 +287,12 @@ public class Router
 			}
 
 			Router router = routers.get(neighbourRouterId);
-			network = router.getNetworkName();
 			destinations.add(router);
 
 			if (currentTickCount >= 2)
 			{
 				connectedNetworks.put(neighbourRouterId, -1);
-				//networkGraph.getInfoByID(neighbourRouterId);
-				resetNeighbourGraph();
-				shortestPathAlgorithm.computeShortestPath(networkGraph);
+				lsp.addDisconnectedRouter(neighbourRouterId);
 			}
 			else
 			{
@@ -280,9 +302,21 @@ public class Router
 				}
 			}
 
-			LinkStateRouterInfo linkStateRouterInfo = new LinkStateRouterInfo(neighbourRouterId,
-					connectedNetworks.get(neighbourRouterId), network);
+			resetNeighbourGraph();
+		}
 
+		computeShortestPath();
+
+		for (int routerId : lsp.getDisconnectedRouters())
+		{
+			routingCost.put(routerId, -1);
+		}
+
+		for (Entry<Integer, Integer> entry : routingCost.entrySet())
+		{
+			LinkStateRouterInfo linkStateRouterInfo = new LinkStateRouterInfo(entry.getKey(), entry.getValue(),
+					routers.get(entry.getKey()).getNetworkName());
+			linkStateRouterInfo.setPath(getPath(entry.getKey()));
 			lsp.addConnectedLink(linkStateRouterInfo);
 		}
 
@@ -307,5 +341,10 @@ public class Router
 				tickCount.put(tick, listForTicks);
 			}
 		}
+	}
+
+	private List<Integer> getPath(int pathRouterID)
+	{
+		return shortestPathAlgorithm.getRoutingTable().get(pathRouterID).getPath();
 	}
 }

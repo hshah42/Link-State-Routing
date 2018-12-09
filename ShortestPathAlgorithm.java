@@ -86,25 +86,51 @@ public class ShortestPathAlgorithm
 					{
 						if (linkStateRouterInfo.getCost() < 0)
 						{
-							routingTableInfo.setCost(-1);
+							visited.add(linkStateRouterInfo.getId());
+							continue;
 						}
 						else
 						{
 							routingTableInfo.setCost(
 									routingTable.get(currentRouter.getId()).getCost() + linkStateRouterInfo.getCost());
 						}
+
+						List<Integer> path = new ArrayList<>(linkStateRouterInfo.getPath());
+
+						if (path.size() > 0)
+						{
+							if (path.get(0) != router.getId())
+							{
+								path.add(0, router.getId());
+							}
+						}
+						else
+						{
+							path = routingTable.get(currentRouter.getId()).getPath();
+							path.add(linkStateRouterInfo.getId());
+						}
+
+						if (verifyPath(path, routers.get(linkStateRouterInfo.getId())))
+						{
+							routingTableInfo.setPath(path);
+							routingTable.put(linkStateRouterInfo.getId(), routingTableInfo);
+						}
+						else
+						{
+							routingTableInfo.setPath(path);
+							routingTableInfo.setCost(-1);
+							routingTable.put(linkStateRouterInfo.getId(), routingTableInfo);
+						}
 					}
 					else
 					{
+						List<Integer> path = new ArrayList<>();
+						path.add(router.getId());
+						path.add(linkStateRouterInfo.getId());
+
+						routingTableInfo.setPath(path);
 						routingTableInfo.setCost(linkStateRouterInfo.getCost());
 					}
-
-					List<Integer> path = new ArrayList<>(routingTable.get(currentRouter.getId()).getPath());
-					path.add(currentRouter.getId());
-					path.add(linkStateRouterInfo.getId());
-
-					routingTableInfo.setPath(path);
-					routingTable.put(linkStateRouterInfo.getId(), routingTableInfo);
 				}
 
 				if (routingTableInfo.getCost() > 0)
@@ -117,6 +143,33 @@ public class ShortestPathAlgorithm
 
 			currentRouter = routers.get(nextNodeID);
 		}
+	}
+
+	private boolean verifyPath(List<Integer> path, Router destination)
+	{
+		Router lastConnectedRouter = routers.get(path.get(path.size() - 2));
+
+		if (lastConnectedRouter.getNeighbours().contains(destination.getId()))
+		{
+			LinkedList<LinkStateRouterInfo> verificationPath = graph.getInfoByID(lastConnectedRouter.getId());
+
+			if (verificationPath != null)
+			{
+				for (LinkStateRouterInfo info : verificationPath)
+				{
+					if (info.getId() == destination.getId() && info.getCost() > 0)
+					{
+						return true;
+					}
+				}
+			}
+			else
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private int getNextrounter(Set<Integer> awaiting)

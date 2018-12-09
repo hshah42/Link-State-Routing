@@ -1,5 +1,8 @@
 package linkstaterouting;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class LinkStateRouterInfo
 {
 
@@ -11,9 +14,10 @@ public class LinkStateRouterInfo
 		this.network = network;
 	}
 
-	private int		id		= 0;
-	private int		cost	= 0;
-	private String	network	= null;
+	private int				id		= 0;
+	private int				cost	= 0;
+	private String			network	= null;
+	private List<Integer>	path	= new ArrayList<>();
 
 	public int getId()
 	{
@@ -43,6 +47,21 @@ public class LinkStateRouterInfo
 	public void setNetwork(String network)
 	{
 		this.network = network;
+	}
+
+	public void addToPath(int routerId)
+	{
+		path.add(routerId);
+	}
+
+	public void setPath(List<Integer> path)
+	{
+		this.path = path;
+	}
+
+	public List<Integer> getPath()
+	{
+		return path;
 	}
 
 }
